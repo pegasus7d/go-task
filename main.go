@@ -6,6 +6,9 @@ import (
 	
 	"net/http"
 	"os"
+	"os/signal"
+	"time"
+	"context"
 
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
@@ -70,7 +73,41 @@ func main(){
 	router.HandleFunc("/create/person", CreatePerson).Methods("POST")
 	router.HandleFunc("/delete/person/{id}", DeletePerson).Methods("DELETE")
 
-	http.ListenAndServe(":8080", router)
+	// Create a server with a timeout of 15 seconds
+	server := &http.Server{
+		Addr:         ":8080",
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+	}
+
+	// Create a channel to receive OS signals
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+
+	// Start the server in a goroutine
+	go func() {
+		fmt.Println("Starting server...")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Println("Failed to start server:", err)
+			panic(err)
+		}
+	}()
+
+	// Wait for an OS signal to stop the server
+	<-stop
+
+	// Create a context with a timeout of 15 seconds
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// Shut down the server
+	fmt.Println("Shutting down server...")
+	if err := server.Shutdown(ctx); err != nil {
+		fmt.Println("Failed to shut down server:", err)
+		panic(err)
+	}
+	fmt.Println("Server has been shut down.")
 	
 
 }
@@ -81,6 +118,7 @@ func GetPeople(w http.ResponseWriter, r *http.Request) {
 	var people []Person
 
 	db.Find(&people)
+	
 
 	json.NewEncoder(w).Encode(&people)
 }
