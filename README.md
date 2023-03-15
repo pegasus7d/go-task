@@ -8,4 +8,4 @@ Replace the .env file with the credientials to your database, then run source .e
 ## Use
 Replace the `.env` file with the credientials to your database, then run `source .env` in your terminal and start the program `go run main.go`
 
-##create a database on sql
+## create a database on sql
